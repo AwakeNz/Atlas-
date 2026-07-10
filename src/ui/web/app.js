@@ -152,8 +152,9 @@ function showModal({ id, title, detail }) {
   els.scrim.hidden = false; els.allow.focus();
 }
 function answer(ok) {
-  if (currentConfirm == null) return;
-  callApi("confirm", currentConfirm, ok);
+  // Always dismiss the panel, even if no request is pending (a stray/stale
+  // overlay must never be able to trap the UI).
+  if (currentConfirm != null) callApi("confirm", currentConfirm, ok);
   currentConfirm = null; els.scrim.hidden = true; els.entry.focus();
 }
 

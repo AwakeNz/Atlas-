@@ -32,6 +32,12 @@ html, body {
 button, input, .btn, .pill, .icon-btn { touch-action: manipulation; }
 button, .btn, .pill, .icon-btn { min-height: 40px; }   /* ≥40px touch targets */
 
+/* CRITICAL: the hidden attribute must beat author display rules. Without this,
+   .modal-scrim { display:grid } and .update-banner { display:flex } override
+   hidden, so the confirm overlay is permanently on screen from launch and
+   swallows every click/tap (the "can't press Allow/Deny" bug). */
+[hidden] { display: none !important; }
+
 /* ---------- boot ---------- */
 .boot {
   position: fixed; inset: 0; z-index: 50; display: grid; place-content: center;

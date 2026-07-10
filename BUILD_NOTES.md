@@ -97,3 +97,18 @@ detection now uses a pure-stdlib **RMS energy gate** (`audioop.rms`) with an
 adaptive noise floor in `voice/wake.py` — no wheel, no compiler, no fragile
 hook. Removed webrtcvad from `requirements.txt` and the spec `hiddenimports`.
 Verified `audioop` thresholds on synthetic loud/quiet frames.
+
+### 7. Confirm panel visible from launch, unclickable — REAL root cause — FIXED
+Symptom: "Deny/Allow shows at startup and nothing is pressable" (persisted
+across reinstall; the earlier easy_drag fix was contributory but not the cause).
+
+Root cause: the HTML `hidden` attribute maps to UA-level `display: none`, which
+**any author `display` rule overrides**. `.modal-scrim { display: grid }`
+(z-index 40, `position: fixed; inset: 0`) therefore ignored its `hidden`
+attribute and covered the entire window from launch, swallowing every
+click/tap. `.update-banner { display: flex }` and `.hud { display: grid }` had
+the same latent bug.
+
+Fix (styles.css): `[hidden] { display: none !important; }` — the attribute now
+always wins. Hardening (app.js): `answer()` now always dismisses the scrim even
+when no confirmation is pending, so a stray overlay can never trap the UI.
