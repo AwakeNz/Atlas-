@@ -28,4 +28,4 @@ numpy==1.26.4             # audio buffers; pinned to 1.x (see note above)
 openwakeword==0.6.0       # wake word "atlas" / "hey atlas" (ONNX)
 onnxruntime==1.17.3       # CPU inference backend for openWakeWord
 faster-whisper==1.0.3     # local speech-to-text (CTranslate2, CPU int8)
-webrtcvad==2.0.10         # end-of-speech (silence) detection
+webrtcvad-wheels==2.0.14  # end-of-speech (silence) detection (prebuilt Windows wheels; imports as `webrtcvad`)
