@@ -3,7 +3,7 @@
 Pipeline (all local, all CPU):
   continuous 16 kHz mic  →  openWakeWord (ONNX) scores each 80 ms frame
   score > sensitivity    →  soft chime, orb → listening
-  record with webrtcvad  →  stop after 1.2 s of trailing silence (cap 15 s)
+  record (RMS energy gate)→ stop after 1.2 s of trailing silence (cap 15 s)
   faster-whisper         →  text  →  agent.submit()
 
 CPU discipline: the sounddevice callback only enqueues raw frames; all ONNX
@@ -208,15 +208,21 @@ class WakeWord:
             self.bus.state("idle")
 
     def _record_until_silence(self) -> bytes:
+        """Record until ~SILENCE_HANG_S of trailing silence, using a pure-stdlib
+        RMS energy gate (audioop). No webrtcvad: it needs a C compiler and its
+        PyInstaller hook is fragile, and this is plenty for end-of-utterance
+        detection. Falls back to a fixed cap if audioop is somehow unavailable."""
         try:
-            import webrtcvad
-            vad = webrtcvad.Vad(2)
+            import audioop
         except Exception as e:                # noqa: BLE001
-            log.warning("webrtcvad unavailable, fixed 4s capture: %s", e)
-            vad = None
+            log.warning("audioop unavailable, fixed 4s capture: %s", e)
+            audioop = None
+
         collected = bytearray()
         carry = bytearray()
         silence = 0.0
+        voiced_total = 0.0
+        noise_floor = 250.0                   # adapts up from ambient level
         started = time.time()
         while time.time() - started < MAX_UTTERANCE_S:
             try:
@@ -224,18 +230,25 @@ class WakeWord:
             except queue.Empty:
                 break
             collected.extend(frame)
-            if vad is None:
+            if audioop is None:
                 if time.time() - started > 4:
                     break
                 continue
             carry.extend(frame)
-            # feed webrtcvad in exact 30 ms frames
+            # evaluate in exact 30 ms frames
             while len(carry) >= VAD_FRAME * 2:
                 chunk = bytes(carry[:VAD_FRAME * 2])
                 del carry[:VAD_FRAME * 2]
-                voiced = vad.is_speech(chunk, RATE)
-                silence = 0.0 if voiced else silence + VAD_FRAME_MS / 1000
-            if silence >= SILENCE_HANG_S and len(collected) > RATE:   # ≥0.5s audio
+                rms = audioop.rms(chunk, 2)   # 0..32767 for 16-bit mono
+                # voiced if clearly above the running noise floor
+                if rms > max(500.0, noise_floor * 2.2):
+                    silence = 0.0
+                    voiced_total += VAD_FRAME_MS / 1000
+                else:
+                    silence += VAD_FRAME_MS / 1000
+                    noise_floor = 0.95 * noise_floor + 0.05 * rms   # track ambient
+            # only stop once we've heard real speech, then a silence tail
+            if voiced_total >= 0.3 and silence >= SILENCE_HANG_S:
                 break
         return bytes(collected)
 

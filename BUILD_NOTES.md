@@ -80,3 +80,20 @@ install` the Windows-only stack here).
 - Launching/round-tripping the HUD — no `_tkinter`, no WebView2, no display.
 These require a Windows host: the user's machine, or the `windows-latest` CI
 runner (`.github/workflows/release.yml`, which already runs the full chain).
+
+### 6. CI build failure (run #1) — webrtcvad hook — FIXED
+`python build.py` on windows-latest failed at PyInstaller with:
+`ImportErrorWhenRunningHook: hook-webrtcvad.py` ← `PackageNotFoundError: No
+package metadata was found for webrtcvad`.
+
+Root cause: I'd swapped `webrtcvad` → `webrtcvad-wheels` to dodge the C-compiler
+requirement. That package installs the **module** `webrtcvad` but its
+**distribution** is named `webrtcvad-wheels`, so the bundled contrib hook's
+`copy_metadata('webrtcvad')` raised and aborted the whole build. (Icon step was
+fine — `[icon] using icon.png (256x256)` — so this was never icon-related.)
+
+Fix: dropped the webrtcvad dependency entirely. End-of-utterance silence
+detection now uses a pure-stdlib **RMS energy gate** (`audioop.rms`) with an
+adaptive noise floor in `voice/wake.py` — no wheel, no compiler, no fragile
+hook. Removed webrtcvad from `requirements.txt` and the spec `hiddenimports`.
+Verified `audioop` thresholds on synthetic loud/quiet frames.

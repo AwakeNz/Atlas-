@@ -35,7 +35,7 @@ a = Analysis(
         "requests", "edge_tts", "pystray", "pystray._win32", "webview",
         # voice pipeline (lazy)
         "onnxruntime", "openwakeword", "openwakeword.model", "faster_whisper",
-        "webrtcvad", "numpy",
+        "numpy",
         # lazily imported by plugins loaded from disk
         "keyboard", "pygetwindow", "pydirectinput", "sounddevice",
         "PIL.ImageGrab", "PIL.Image", "PIL.ImageDraw",
