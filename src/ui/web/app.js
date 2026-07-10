@@ -181,8 +181,19 @@ document.addEventListener("keydown", (e) => {
   if (!els.scrim.hidden) { if (e.key === "Escape") answer(false); if (e.key === "Enter") answer(true); }
 });
 
-/* signal readiness so Python can start pushing events */
-window.addEventListener("pywebviewready", () => {
+/* signal readiness so Python can start pushing events. Handle the race where
+   pywebviewready already fired before this script attached its listener. */
+let readySignalled = false;
+function signalReady() {
+  if (readySignalled) return;
+  readySignalled = true;
   const info = callApi("ready");
   Promise.resolve(info).then((d) => { if (d && d.version) els.ver.textContent = "· v" + d.version; });
-});
+}
+window.addEventListener("pywebviewready", signalReady);
+if (window.pywebview && window.pywebview.api) signalReady();   // already ready
+
+/* Safety net: the HUD is revealed by the Python-side "boot" event. If that
+   never arrives (bridge hiccup), force the boot/reveal so the window can never
+   be stuck blank. runBoot() is idempotent (guarded by `booted`). */
+setTimeout(() => runBoot("ONLINE"), 12000);
