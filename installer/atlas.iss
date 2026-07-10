@@ -69,9 +69,12 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Name: "startupicon"; Description: "Launch {#MyAppName} at Windows startup"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
-; The onefile exe carries plugins/skills/web/wake/assets internally; the app
-; materializes editable copies into %APPDATA%\ATLAS on first run.
-Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+; ONEDIR: install the whole PyInstaller output folder (dist\ATLAS\*) into {app}.
+; The bundled plugins/skills/web/wake/assets ride along inside _internal; the
+; app materializes editable copies of plugins/skills into %APPDATA%\ATLAS on
+; first run.
+Source: "..\dist\ATLAS\*"; DestDir: "{app}"; \
+    Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

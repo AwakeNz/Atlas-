@@ -1,29 +1,31 @@
-# A.T.L.A.S. runtime dependencies.
+# A.T.L.A.S. runtime dependencies — pinned to a coherent, tested baseline.
 #
-# NOTE ON THE BUDGET: v0.1 capped deps at 10. v0.2 adds a local voice pipeline
-# (offline wake word + Whisper) and a pywebview FUI — capabilities that
-# intrinsically require the packages below. The count is now ~14; this is a
-# deliberate, feature-driven expansion, documented in docs/ARCHITECTURE.md.
-# Everything still lazy-imports so cold start stays under 2 s.
+# Local voice (openWakeWord/onnxruntime/faster-whisper) + pywebview push the
+# count past v0.1's 10-package cap; that expansion is intentional (see
+# docs/ARCHITECTURE.md). Everything lazy-imports so cold start stays < 2 s.
+#
+# numpy is held at 1.x on purpose: onnxruntime and faster-whisper's stack are
+# not all numpy-2 clean, and a numpy-2 ABI mismatch is the classic silent crash.
+# PyInstaller is a BUILD tool, installed separately (build.py / CI), not here.
 
 # --- core / cloud ---
-requests>=2.31          # provider chain (Gemini/Groq/Cerebras), Discord, updater
-edge-tts>=6.1           # British-male neural TTS (en-GB-RyanNeural)
+requests==2.32.3          # provider chain (Gemini/Groq/Cerebras), Discord, updater
+edge-tts==6.1.12          # British-male neural TTS (en-GB-RyanNeural)
 
 # --- UI ---
-pywebview>=5.0          # frameless FUI window (HTML/CSS/JS); tkinter is fallback
+pywebview==5.3.2          # frameless FUI window (HTML/CSS/JS); tkinter is fallback
 
 # --- input / system ---
-keyboard>=0.13          # global Ctrl+Space hotkey + push-to-talk
-pygetwindow>=0.0.9      # window_control plugin
-pydirectinput>=1.0.4    # game_interact plugin
-sounddevice>=0.4.6      # microphone capture (wake word + push-to-talk)
-Pillow>=10.0            # screenshots + tray icon glyph
-pystray>=0.19           # system tray menu
+keyboard==0.13.5          # global Ctrl+Space hotkey + push-to-talk
+PyGetWindow==0.0.9        # window_control plugin
+pydirectinput==1.0.4      # game_interact plugin
+sounddevice==0.4.7        # microphone capture (wake word + push-to-talk)
+Pillow==10.4.0            # screenshots + tray icon glyph + icon.png → .ico
+pystray==0.19.5           # system tray menu
 
 # --- local voice pipeline (offline after first-run download) ---
-openwakeword>=0.6.0     # wake word "atlas" / "hey atlas" (ONNX)
-onnxruntime>=1.17       # CPU inference backend for openWakeWord
-faster-whisper>=1.0     # local speech-to-text (CTranslate2, CPU int8)
-webrtcvad>=2.0.10       # end-of-speech (silence) detection
-numpy>=1.24             # audio buffers for wake + whisper
+numpy==1.26.4             # audio buffers; pinned to 1.x (see note above)
+openwakeword==0.6.0       # wake word "atlas" / "hey atlas" (ONNX)
+onnxruntime==1.17.3       # CPU inference backend for openWakeWord
+faster-whisper==1.0.3     # local speech-to-text (CTranslate2, CPU int8)
+webrtcvad==2.0.10         # end-of-speech (silence) detection

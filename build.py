@@ -82,13 +82,14 @@ def _placeholder_icon():
 
 
 def run_pyinstaller() -> Path:
-    print("[build] PyInstaller…")
+    print("[build] PyInstaller (onedir)…")
     subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean",
                     "atlas.spec"], cwd=ROOT, check=True)
-    exe = ROOT / "dist" / "ATLAS.exe"
+    exe = ROOT / "dist" / "ATLAS" / "ATLAS.exe"   # onedir: dist/ATLAS/ATLAS.exe
     if not exe.exists():
-        sys.exit("PyInstaller did not produce dist/ATLAS.exe")
-    print(f"[build] {exe} ({exe.stat().st_size // 1024} KB)")
+        sys.exit("PyInstaller did not produce dist/ATLAS/ATLAS.exe")
+    folder_mb = sum(f.stat().st_size for f in exe.parent.rglob("*") if f.is_file()) // (1 << 20)
+    print(f"[build] {exe.parent} ({folder_mb} MB folder)")
     return exe
 
 
