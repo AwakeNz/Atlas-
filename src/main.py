@@ -100,7 +100,10 @@ def main() -> int:
     if hasattr(hud, "wire"):
         hud.wire(mic_toggle=controls.get("mic_toggle"),
                  check_updates=controls["check_updates"],
-                 install_update=controls["install_update"])
+                 install_update=controls["install_update"],
+                 save_key=lambda key, provider: _save_api_key(config, key, provider),
+                 restart=lambda: _restart_app(bus, log),
+                 has_key=lambda: _has_any_key(config))
 
     from ui.tray import start_tray
     start_tray(bus, skills, controls)
@@ -175,6 +178,30 @@ def _wire_hotkey(config, bus, agent, llm, log):
 
 def _has_any_key(config) -> bool:
     return any(p.get("api_key") for p in config.get("providers", []) or [])
+
+
+def _save_api_key(config, key: str, provider: str = "gemini") -> None:
+    """Store the pasted key on the named provider (or the first one) and persist
+    settings.json so a restart picks it up."""
+    providers = config.get("providers", []) or []
+    target = next((p for p in providers if p.get("name") == provider), None)
+    if target is None and providers:
+        target = providers[0]
+    if target is not None:
+        target["api_key"] = key.strip()
+        config.set("providers", providers)
+
+
+def _restart_app(bus, log) -> None:
+    """Relaunch the frozen exe so it re-reads settings.json, then quit."""
+    try:
+        if getattr(sys, "frozen", False):
+            import subprocess
+            subprocess.Popen([sys.executable], close_fds=True)
+        log.info("restart requested by user")
+    except Exception as e:                    # noqa: BLE001
+        log.error("restart failed: %s", e)
+    bus.quit()
 
 
 if __name__ == "__main__":

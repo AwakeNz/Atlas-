@@ -156,6 +156,23 @@ button, .btn, .pill, .icon-btn { min-height: 40px; }   /* ≥40px touch targets 
 .pill { margin-left: auto; border-color: var(--amber); color: var(--amber); }
 .pill:active, .btn:active { transform: scale(.96); }
 
+/* ---------- API key panel ---------- */
+.keybar {
+  margin: 0 16px 8px; padding: 10px 12px; border: 1px solid var(--accent);
+  border-radius: 10px; background: rgba(168,85,247,.08); display: grid; gap: 8px;
+}
+.keylabel { font-size: 11px; letter-spacing: 1px; color: var(--accent-hot); }
+.keyrow { display: flex; gap: 8px; }
+.keydone { display: flex; gap: 10px; align-items: center; font-size: 11px; color: var(--accent-hot); }
+#keyInput {
+  flex: 1; background: var(--ghost); border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 12px; color: var(--accent-hot); font-family: var(--font-data);
+  font-size: 13px; outline: none; -webkit-user-select: text; user-select: text;
+}
+#keyInput:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(168,85,247,.2); }
+.keyhint { font-size: 10px; color: var(--muted); text-decoration: none; }
+.keyhint:hover { color: var(--accent); }
+
 /* ---------- input ---------- */
 .inputbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px 14px; }
 .prompt { color: var(--accent-hot); }

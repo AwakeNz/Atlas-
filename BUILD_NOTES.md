@@ -112,3 +112,15 @@ the same latent bug.
 Fix (styles.css): `[hidden] { display: none !important; }` — the attribute now
 always wins. Hardening (app.js): `answer()` now always dismisses the scrim even
 when no confirmation is pending, so a stray overlay can never trap the UI.
+
+### 8. Can't type + in-panel API key + restart + move — FIXED
+- Typing dead: on Windows/WebView2 a `transparent=True` frameless window often
+  refuses keyboard focus → set `transparent=False` (solid dark, same look).
+  Added autofocus + click-anywhere-refocuses-input.
+- API key in-panel: new key bar (paste key → SAVE), auto-shown on first run when
+  no key is configured; routes gsk_→groq else gemini. Bridge: Api.save_api_key.
+- Restart-to-apply: "RESTART NOW" button → Api.restart_app → relaunch exe + quit
+  so the new key in settings.json is read. Bridge: Api.restart_app / main._restart_app.
+- Window move: kept the eyebrow `pywebview-drag-region` (now reliable with
+  transparency off). has_key surfaced via ready() so JS knows to prompt.
+Verified: JS/py parse, main() smoke, key save/route/persist unit test.

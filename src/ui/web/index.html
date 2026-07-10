@@ -24,6 +24,10 @@
   <header class="eyebrow pywebview-drag-region">
     <span class="dotname">A.T.L.A.S.</span>
     <span class="ver" id="ver">· v0.2.0</span>
+    <button class="icon-btn" id="keyBtn" title="API key" aria-label="API key">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path
+        d="M7 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2.83-2H21v2h-2v2h-2v-2h-2.17A5 5 0 1 1 9.83 12z"/></svg>
+    </button>
     <button class="icon-btn" id="micBtn" title="Mute microphone" aria-label="Toggle microphone">
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path id="micPath"
         d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1A7 7 0 0 0 19 12h-2z"/></svg>
@@ -59,9 +63,24 @@
     <button id="updateBtn" class="pill">INSTALL</button>
   </div>
 
+  <!-- API key panel: shown automatically when no key is configured -->
+  <div class="keybar" id="keybar" hidden>
+    <label class="keylabel" id="keyLabel">Paste your API key to activate A.T.L.A.S.</label>
+    <div class="keyrow" id="keyRow">
+      <input id="keyInput" type="password" autocomplete="off" spellcheck="false"
+             placeholder="AIza… (Gemini) or gsk_… (Groq)" aria-label="API key">
+      <button id="keySave" class="pill">SAVE</button>
+    </div>
+    <div class="keydone" id="keyDone" hidden>
+      <span>Key saved. Restart so A.T.L.A.S. can read it.</span>
+      <button id="keyRestart" class="pill">RESTART NOW</button>
+    </div>
+    <a class="keyhint" href="https://aistudio.google.com/apikey" id="keyGetLink">Need a free key? →</a>
+  </div>
+
   <footer class="inputbar">
     <span class="prompt">&#10095;</span>
-    <input id="entry" type="text" autocomplete="off" spellcheck="false"
+    <input id="entry" type="text" autocomplete="off" spellcheck="false" autofocus
            placeholder="Type a command, or say “Atlas”…" aria-label="Command input">
   </footer>
 </main>

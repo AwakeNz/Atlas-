@@ -30,11 +30,30 @@ class Api:
         self.mic_toggle_cb = None
         self.check_updates_cb = None
         self.install_update_cb = None
+        self.save_key_cb = None
+        self.restart_cb = None
+        self.has_key_cb = None
         self._ready = threading.Event()
 
     def ready(self):
         self._ready.set()
-        return {"version": __version__}
+        has_key = bool(self.has_key_cb()) if self.has_key_cb else True
+        return {"version": __version__, "has_key": has_key}
+
+    def save_api_key(self, key, provider="gemini"):
+        """Persist an API key into settings.json (via the wired callback)."""
+        if self.save_key_cb and key and key.strip():
+            self.save_key_cb(key.strip(), provider)
+            return True
+        return False
+
+    def restart_app(self):
+        """Relaunch the app so it re-reads settings.json (new API key)."""
+        if self.restart_cb:
+            self.restart_cb()
+        else:
+            self._bus.quit()
+        return True
 
     def submit(self, text):
         if text and text.strip():
@@ -78,10 +97,14 @@ class WebHud:
         self._on_speak = fn
 
     # tray/main wire these so JS buttons reach the real subsystems
-    def wire(self, mic_toggle=None, check_updates=None, install_update=None):
+    def wire(self, mic_toggle=None, check_updates=None, install_update=None,
+             save_key=None, restart=None, has_key=None):
         self.api.mic_toggle_cb = mic_toggle
         self.api.check_updates_cb = check_updates
         self.api.install_update_cb = install_update
+        self.api.save_key_cb = save_key
+        self.api.restart_cb = restart
+        self.api.has_key_cb = has_key
 
     def run(self):
         import webview
@@ -92,10 +115,13 @@ class WebHud:
         # DENY never fire, badly so on touch screens). Instead we mark only the
         # eyebrow header draggable via the `pywebview-drag-region` CSS class, so
         # every button and input stays tappable.
+        # transparent=False: on Windows/WebView2 a transparent frameless window
+        # frequently refuses keyboard focus, so text input silently does nothing.
+        # A solid dark window keeps the HUD look while making typing reliable.
         self._window = webview.create_window(
             "A.T.L.A.S.", url=html_path.as_uri(), js_api=self.api,
             width=520, height=680, frameless=True, easy_drag=False,
-            on_top=True, transparent=True, background_color="#050308",
+            on_top=True, transparent=False, background_color="#050308",
             resizable=False)
         webview.start(self._pump, private_mode=False)   # blocks until window closed
         self._stop.set()

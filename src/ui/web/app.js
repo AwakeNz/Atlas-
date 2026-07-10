@@ -17,6 +17,9 @@ const els = {
   updateBanner: $("updateBanner"), updateText: $("updateText"), updateBtn: $("updateBtn"),
   scrim: $("scrim"), mTitle: $("mTitle"), mDetail: $("mDetail"),
   allow: $("allowBtn"), deny: $("denyBtn"),
+  keyBtn: $("keyBtn"), keybar: $("keybar"), keyInput: $("keyInput"),
+  keySave: $("keySave"), keyRow: $("keyRow"), keyDone: $("keyDone"),
+  keyRestart: $("keyRestart"),
 };
 
 /* ---------------- orb ---------------- */
@@ -177,6 +180,33 @@ els.mic.addEventListener("click", () => callApi("mic_toggle"));
 els.allow.addEventListener("click", () => answer(true));
 els.deny.addEventListener("click", () => answer(false));
 els.updateBtn.addEventListener("click", () => callApi("install_update"));
+
+/* ---------------- API key panel ---------------- */
+function toggleKeybar(force) {
+  const show = force != null ? force : els.keybar.hidden;
+  els.keybar.hidden = !show;
+  if (show) els.keyInput.focus();
+}
+els.keyBtn.addEventListener("click", () => toggleKeybar());
+function saveKey() {
+  const k = els.keyInput.value.trim();
+  if (!k) { els.keyInput.focus(); return; }
+  const prov = /^gsk_/.test(k) ? "groq" : "gemini";   // route by key prefix
+  Promise.resolve(callApi("save_api_key", k, prov)).then((ok) => {
+    if (ok !== false) { els.keyRow.hidden = true; els.keyDone.hidden = false; els.keyInput.value = ""; }
+  });
+}
+els.keySave.addEventListener("click", saveKey);
+els.keyInput.addEventListener("keydown", (e) => { if (e.key === "Enter") saveKey(); });
+els.keyRestart.addEventListener("click", () => callApi("restart_app"));
+
+/* click anywhere neutral re-focuses the command input, so typing always lands */
+document.addEventListener("mousedown", (e) => {
+  const t = e.target;
+  if (t.tagName === "INPUT" || t.tagName === "BUTTON" || t.tagName === "A") return;
+  if (!els.scrim.hidden || !els.keybar.hidden) return;
+  setTimeout(() => els.entry.focus(), 0);
+});
 document.addEventListener("keydown", (e) => {
   if (!els.scrim.hidden) { if (e.key === "Escape") answer(false); if (e.key === "Enter") answer(true); }
 });
@@ -188,7 +218,16 @@ function signalReady() {
   if (readySignalled) return;
   readySignalled = true;
   const info = callApi("ready");
-  Promise.resolve(info).then((d) => { if (d && d.version) els.ver.textContent = "· v" + d.version; });
+  Promise.resolve(info).then((d) => {
+    if (!d) return;
+    if (d.version) els.ver.textContent = "· v" + d.version;
+    if (d.has_key === false) {          // first run: prompt for the key up front
+      toggleKeybar(true);
+      typer.line("No API key yet — paste one above to activate A.T.L.A.S.", "dim");
+    } else {
+      els.entry.focus();
+    }
+  });
 }
 window.addEventListener("pywebviewready", signalReady);
 if (window.pywebview && window.pywebview.api) signalReady();   // already ready
