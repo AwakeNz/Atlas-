@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from logging.handlers import RotatingFileHandler
 
-from .config import app_dir
+from .paths import log_path
 
 _configured = False
 
@@ -16,7 +16,7 @@ def get_logger(name: str = "atlas") -> logging.Logger:
         root = logging.getLogger("atlas")
         root.setLevel(logging.INFO)
         handler = RotatingFileHandler(
-            app_dir() / "atlas.log", maxBytes=1_000_000, backupCount=2, encoding="utf-8"
+            log_path(), maxBytes=1_000_000, backupCount=2, encoding="utf-8"
         )
         handler.setFormatter(
             logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")

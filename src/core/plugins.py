@@ -12,7 +12,7 @@ import traceback
 from pathlib import Path
 from typing import Callable
 
-from .config import app_dir
+from .paths import data_dir, plugins_dir
 from .log import get_logger
 
 log = get_logger("atlas.plugins")
@@ -30,7 +30,7 @@ class PluginContext:
         self.llm = llm                # LLMProvider — plugins may call the model
         self.confirm = confirm        # (title, detail) -> bool, blocks on modal
         self.notify = notify          # push a line to the HUD
-        self.app_dir = app_dir()
+        self.app_dir = data_dir()
 
 
 class PluginRegistry:
@@ -52,7 +52,7 @@ class PluginRegistry:
         self._plugins.clear()
         for b in self._builtins:            # builtins first: files can't shadow them
             self._register(b, "builtin")
-        plugin_dir = app_dir() / "plugins"
+        plugin_dir = plugins_dir()
         if not plugin_dir.is_dir():
             log.warning("no plugins/ directory at %s", plugin_dir)
             return

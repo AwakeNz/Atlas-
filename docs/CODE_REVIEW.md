@@ -260,3 +260,69 @@ cannot shadow them — first registration wins. **Verified.**
   the next idle tick rather than wedging.
 - **Fail-open to text.** Any failure to load ONNX/whisper disables voice with a
   log line; text input and the hotkey are unaffected.
+
+
+---
+
+# v0.3 review — installer, upgrades, uninstall hygiene
+
+## 13. Root cause: why the old `update.bat` swap failed
+
+The v0.2 mechanism downloaded `ATLAS_new.exe` and spawned a `.bat` to
+`copy /Y` it over the running exe after the process exited. Diagnosed failure
+modes, all real on Windows:
+
+1. **Locked exe / race.** The `.bat` polled `tasklist` for the PID, but a
+   onefile PyInstaller exe spawns a **child** bootloader process and unpacks to
+   a `_MEI` temp dir; the parent PID can exit while the child still holds
+   `ATLAS.exe` mapped, so `copy` hits a sharing violation and the retry loop
+   burns out. (This is the core reason — a plain `.bat` has no reliable "app
+   fully released the file" signal; the Restart Manager does.)
+2. **Paths with spaces.** `C:\Program Files\ATLAS\ATLAS.exe` — every path in
+   the generated `.bat` must be quoted *and* survive `%~f0`/`copy` parsing;
+   one unquoted expansion and the copy silently targets the wrong path.
+3. **Antivirus / SmartScreen.** A freshly written unsigned `.bat` that copies
+   over an exe in Program Files is exactly the heuristic AV blocks; the copy is
+   denied with no useful error.
+4. **Non-admin Program Files.** If installed to Program Files without elevation,
+   the swap needs privileges the running user doesn't have.
+
+**Fix is architectural, not a better `.bat`:** hand the swap to Inno Setup,
+which uses the Windows **Restart Manager** to close the app cleanly (waiting for
+*all* handles, child included), replaces files with proper privileges, and
+relaunches. `update.bat` and `_spawn_swap` are deleted (verified: no reference
+remains).
+
+## 14. Upgrade path keeps every byte of user data
+
+- The installer writes **only** to `{app}`; there is no `[Files]`, `[Dirs]` or
+  `[Code]` path that references `{userappdata}\ATLAS` on install/upgrade.
+- The app reads/writes user data exclusively through `core/paths.data_dir()` →
+  `%APPDATA%\ATLAS` (verified: settings, log, memory.db, plugins, skills all
+  resolve there in tests).
+- Fixed `AppId` makes v0.2→v0.3 an upgrade, so the same data dir is reused.
+- `migrate_legacy()` only *adds* pre-0.3 files into the data dir and refuses to
+  overwrite existing ones (verified both directions).
+  → No code path deletes or rewrites user data during an upgrade.
+
+## 15. Uninstall leaves nothing orphaned
+
+- Program files: removed by Inno automatically; `[UninstallDelete]` also clears
+  any legacy `{app}\update` remnant.
+- Shortcuts: Start-menu group and the desktop icon are Inno-managed `[Icons]` →
+  removed on uninstall.
+- Startup: the HKCU Run value carries `uninsdeletevalue` → deleted on uninstall.
+- Mutex: a kernel object with no on-disk footprint; released when the process
+  exits (the uninstaller closes the app via `AppMutex` first). Nothing to clean.
+- User data: only removed if the user answers **No** to the keep-data prompt.
+
+## 16. Silent flags require explicit user consent
+
+The only caller that passes `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS` is
+`updater.install()`, which is reachable **only** from an explicit user action —
+the HUD "INSTALL" button (`pywebview.api.install_update`) or the tray
+"Check for updates" → install. The startup `check_async` path is notify-only
+(it emits an `update` banner, never calls `install`). `install()` additionally
+refuses to run unless frozen, requires both the Setup asset and a matching
+verified SHA-256, and refuses non-HTTPS URLs before it will launch anything.
+Nothing auto-triggers a silent install.

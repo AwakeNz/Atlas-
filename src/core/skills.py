@@ -19,7 +19,7 @@ import threading
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import app_dir
+from .paths import skills_dir
 from .log import get_logger
 
 log = get_logger("atlas.skills")
@@ -71,7 +71,7 @@ class SkillsIndex:
     files on demand. reload() is safe to call from any thread."""
 
     def __init__(self, root: Path | None = None):
-        self.root = root or app_dir() / "skills"
+        self.root = root or skills_dir()
         self._lock = threading.Lock()
         self._skills: dict[str, SkillMeta] = {}
         self.reload()

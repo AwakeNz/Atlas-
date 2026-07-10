@@ -1,9 +1,10 @@
 # Release checklist
 
-A.T.L.A.S. ships as a single `ATLAS.exe`. The in-app updater downloads that
-asset from the **latest GitHub Release** and verifies it against the
-`ATLAS.exe.sha256` checksum published in the **same** release. Both assets are
-mandatory — the updater refuses to install without a matching checksum.
+A.T.L.A.S. ships as `ATLAS-Setup-v<version>.exe` (an Inno Setup installer). The
+in-app updater downloads that asset from the **latest GitHub Release** and
+verifies it against the `ATLAS-Setup-v<version>.exe.sha256` checksum published in
+the **same** release. Both assets are mandatory — the updater refuses to install
+without a matching checksum, then runs the installer silently to upgrade in place.
 
 ## Cut a release
 
@@ -26,8 +27,8 @@ mandatory — the updater refuses to install without a matching checksum.
 5. The **`Build & Release` GitHub Action** (`.github/workflows/release.yml`)
    fires on the tag and:
    - checks the tag matches `__version__` (fails otherwise),
-   - builds `dist/ATLAS.exe` via `atlas.spec` (onefile, windowed),
-   - computes `dist/ATLAS.exe.sha256` (`<hash>  ATLAS.exe`),
+   - converts the icon, builds the exe, and packages `ATLAS-Setup-v<version>.exe`,
+   - compiles the Inno Setup installer and computes its `.sha256`,
    - creates a **draft** Release with both files attached.
 
 6. **Review the draft Release**, confirm both assets are present, then
@@ -37,21 +38,23 @@ mandatory — the updater refuses to install without a matching checksum.
 ## Manual build (local, if you're not using CI)
 
 ```bat
-build.bat
-pwsh -c "(Get-FileHash dist\ATLAS.exe -Algorithm SHA256).Hash.ToLower() + '  ATLAS.exe' | Out-File -Encoding ascii dist\ATLAS.exe.sha256"
+python build.py            REM icon -> PyInstaller -> Inno Setup -> checksums
 ```
-Upload `ATLAS.exe` **and** `ATLAS.exe.sha256` to the release.
+Everything lands in `dist\release\`: upload `ATLAS-Setup-v<version>.exe`
+**and** its `.sha256` to the release. (Requires Inno Setup 6 on PATH for the
+installer step; without it build.py still produces the exe and warns.)
 
 ## What updates never touch
 
 `plugins/`, `skills/`, `settings.json`, `apps.json`, `memory.db`, `models/`,
-and `jarvis`/`atlas.log` live next to the exe and survive every upgrade — the
-swap replaces only `ATLAS.exe`.
+and `atlas.log` live in `%APPDATA%\ATLAS` and survive every upgrade — the
+installer only ever writes to `Program Files\ATLAS`.
 
 ## Verifying the updater end-to-end
 
 - Install an older build, publish a newer release, launch: the HUD should show
   `UPDATE AVAILABLE — vX.Y.Z` and the tray should offer **Check for updates**.
-- Click **INSTALL**: download → checksum verify → `update.bat` swaps the exe
-  and relaunches. A deliberately corrupted asset must be **rejected** at the
-  checksum step (test this).
+- Click **INSTALL**: download → checksum verify → the installer runs
+  `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`, upgrades in place, relaunches.
+  A corrupted asset must be **rejected** at the checksum step. Confirm
+  `%APPDATA%\ATLAS` is untouched across the upgrade.

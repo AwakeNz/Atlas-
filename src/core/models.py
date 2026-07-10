@@ -15,7 +15,7 @@ import hashlib
 import threading
 from pathlib import Path
 
-from .config import models_dir
+from .paths import models_dir
 from .log import get_logger
 
 log = get_logger("atlas.models")
@@ -128,6 +128,6 @@ def _ensure(config, bus, on_ready) -> None:
 
 
 def _bundled_wake_model() -> Path | None:
-    from .config import bundle_dir
+    from .paths import bundle_dir
     p = bundle_dir() / "wake" / "atlas.onnx"
     return p if p.exists() else None

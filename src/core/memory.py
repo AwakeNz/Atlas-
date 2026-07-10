@@ -10,7 +10,7 @@ import threading
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 
-from .config import app_dir
+from .paths import memory_db
 from .log import get_logger
 
 log = get_logger("atlas.memory")
@@ -63,7 +63,7 @@ class SQLiteMemoryStore(MemoryStore):
     (sqlite3 connections are not thread-safe to share)."""
 
     def __init__(self, path=None):
-        self.path = str(path or app_dir() / "memory.db")
+        self.path = str(path or memory_db())
         self._local = threading.local()
         with self._conn() as c:
             c.executescript(_SCHEMA)

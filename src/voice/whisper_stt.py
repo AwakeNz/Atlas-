@@ -9,7 +9,7 @@ import threading
 
 import numpy as np
 
-from core.config import models_dir
+from core.paths import models_dir
 from core.log import get_logger
 
 log = get_logger("atlas.whisper")

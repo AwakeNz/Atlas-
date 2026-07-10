@@ -119,7 +119,7 @@ class WakeWord:
     # -- detection loop --
 
     def _load_oww(self):
-        from core.config import models_dir
+        from core.paths import models_dir
         import openwakeword
         from openwakeword.model import Model
 
@@ -145,7 +145,7 @@ class WakeWord:
         if not self.config.get("wake_word_enabled", True):
             return
         # wait for model files (downloaded post-boot) before starting inference
-        from core.config import models_dir
+        from core.paths import models_dir
         needed = ["melspectrogram.onnx", "embedding_model.onnx"]
         for _ in range(600):                  # up to ~5 min for first-run download
             if self._stop.is_set():

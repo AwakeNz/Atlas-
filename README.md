@@ -1,6 +1,6 @@
 # A.T.L.A.S. — Autonomous Task & Logic Assistance System
 
-**v0.2** · Gemini-first LLM chain · hands-free wake word · pywebview FUI · verified auto-update
+**v0.3** · one-click Windows installer · in-place upgrades that keep your data · Gemini-first LLM chain · hands-free wake word · pywebview FUI
 
 A general-purpose, plugin-based AI desktop assistant for Windows. A frameless,
 always-on-top HUD with an animated violet orb: summon it with **Ctrl+Space**,
@@ -19,17 +19,28 @@ memory.db             ← long-term memory (facts / history / habits)
 atlas.log             ← full action log
 ```
 
-## Quick start
+## Install
 
-1. Get a free API key at [console.groq.com](https://console.groq.com).
-2. Run `ATLAS.exe` once — it creates `settings.json` next to itself.
-3. Put your key in `settings.json` → `"groq_api_key"`, restart.
-4. `Ctrl+Space` to summon/dismiss (also in the system tray). Type, or hold
-   `F8` and speak.
+**Download `ATLAS-Setup.exe` from the [latest release](https://github.com/AwakeNz/Atlas-/releases/latest) -> run it -> done.** No Python, no console, no setup steps.
 
-Voice is optional; if there's no microphone or the STT call fails, text input
-is unaffected. TTS speaks in a calm British voice (`en-GB-RyanNeural`) — set
-`"voice_enabled": false` to silence it.
+- The installer registers A.T.L.A.S. in **Apps & features** (proper uninstall),
+  and offers optional **desktop shortcut** and **launch at Windows startup**.
+- **Upgrades:** just run a newer `ATLAS-Setup.exe`, or accept the in-app update
+  prompt -- Windows treats it as an upgrade of the same app and **keeps every
+  byte of your settings, memory, plugins and skills**.
+- **Where your data lives:** program files go to `Program Files\ATLAS`; all your
+  data lives in `%APPDATA%\ATLAS` (`settings.json`, `plugins/`, `skills/`,
+  `memory.db`, `models/`, `atlas.log`). Uninstalling asks whether to keep it --
+  default **yes**.
+
+### First run
+
+1. Get a free API key (Gemini: [aistudio.google.com](https://aistudio.google.com/apikey), or Groq: [console.groq.com](https://console.groq.com)).
+2. Launch A.T.L.A.S., open `%APPDATA%\ATLAS\settings.json`, paste your key into
+   `providers`, and relaunch.
+3. `Ctrl+Space` to summon/dismiss (also in the system tray). Type, or say
+   **"Atlas"**, or hold `F8` to talk.
+
 
 ## What it can do out of the box
 

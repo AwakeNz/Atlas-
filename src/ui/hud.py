@@ -47,6 +47,13 @@ class Hud:
 
         self.root = tk.Tk()
         self.root.title("A.T.L.A.S.")
+        try:
+            from core.paths import icon_path
+            ico = icon_path()
+            if ico is not None:
+                self.root.iconbitmap(default=str(ico))
+        except Exception:                     # noqa: BLE001
+            pass  # window icon is cosmetic; never block the UI
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
         try:

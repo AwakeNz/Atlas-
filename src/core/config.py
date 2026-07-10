@@ -1,14 +1,20 @@
-"""Paths and settings. Everything user-editable lives NEXT TO the exe."""
+"""Settings. All user data lives in %APPDATA%\\ATLAS (see core/paths.py);
+program files stay read-only in Program Files."""
 from __future__ import annotations
 
 import json
 import shutil
-import sys
 import threading
-from pathlib import Path
+
+from .paths import (bundle_dir, data_dir, migrate_legacy, models_dir,
+                    program_dir, settings_path)
+
+# re-exported so legacy `from .config import app_dir/bundle_dir/models_dir`
+# imports keep working while resolving to the AppData location.
+app_dir = data_dir  # noqa: E305  (data_dir IS the app's writable root now)
 
 APP_NAME = "A.T.L.A.S."
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 _DEFAULT_SETTINGS = {
     # -- LLM provider fallback chain (tried top-to-bottom; 429/quota → next) --
@@ -61,30 +67,6 @@ _DEFAULT_APPS = {
 }
 
 
-def is_frozen() -> bool:
-    return getattr(sys, "frozen", False)
-
-
-def app_dir() -> Path:
-    """Directory holding settings.json, plugins/, memory.db, atlas.log, models/."""
-    if is_frozen():
-        return Path(sys.executable).resolve().parent
-    return Path(__file__).resolve().parents[2]  # repo atlas/ dir in dev
-
-
-def bundle_dir() -> Path:
-    """Read-only resources bundled inside the exe (default plugins, web assets)."""
-    if is_frozen():
-        return Path(getattr(sys, "_MEIPASS", app_dir()))
-    return app_dir()
-
-
-def models_dir() -> Path:
-    d = app_dir() / "models"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
 class Config:
     """Thread-safe view over settings.json. Reads are cheap dict lookups;
     save() rewrites the file atomically. Legacy single-provider settings are
@@ -92,7 +74,7 @@ class Config:
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self.path = app_dir() / "settings.json"
+        self.path = settings_path()
         self._data: dict = {}
         self.load()
 
@@ -137,9 +119,11 @@ def _migrate(data: dict) -> dict:
 
 
 def ensure_user_files() -> None:
-    """First-run self-heal: materialize plugins/, skills/ and apps.json
-    beside the exe."""
-    root = app_dir()
+    """First-run self-heal in %APPDATA%\\ATLAS: migrate any legacy data left
+    next to the exe by pre-0.3 builds, then materialize plugins/, skills/ and
+    apps.json from the bundle."""
+    migrate_legacy()
+    root = data_dir()
     apps = root / "apps.json"
     if not apps.exists():
         apps.write_text(json.dumps(_DEFAULT_APPS, indent=2), encoding="utf-8")

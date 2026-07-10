@@ -17,16 +17,27 @@ TOOLTIP = "A.T.L.A.S. — Autonomous Task & Logic Assistance System"
 
 
 def _make_icon_image(muted: bool = False):
-    """Orb glyph: violet ring + hot core. A muted mic shows an amber slash."""
+    """Tray glyph. Prefers the bundled app icon (assets/atlas.ico); falls back
+    to a drawn violet orb. A muted mic overlays an amber slash."""
     from PIL import Image, ImageDraw
+    from core.paths import icon_path
 
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.ellipse((4, 4, 60, 60), outline=(109, 40, 217, 255), width=3)
-    d.ellipse((14, 14, 50, 50), outline=(168, 85, 247, 255), width=4)
-    d.ellipse((26, 26, 38, 38), fill=(216, 180, 254, 255))
+    ico = icon_path()
+    if ico is not None:
+        try:
+            img = Image.open(ico).convert("RGBA").resize((64, 64), Image.LANCZOS)
+        except Exception:                     # noqa: BLE001
+            img = None
+    else:
+        img = None
+    if img is None:
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        d.ellipse((4, 4, 60, 60), outline=(109, 40, 217, 255), width=3)
+        d.ellipse((14, 14, 50, 50), outline=(168, 85, 247, 255), width=4)
+        d.ellipse((26, 26, 38, 38), fill=(216, 180, 254, 255))
     if muted:
-        d.line((12, 52, 52, 12), fill=(255, 179, 71, 255), width=4)
+        ImageDraw.Draw(img).line((12, 52, 52, 12), fill=(255, 179, 71, 255), width=4)
     return img
 
 

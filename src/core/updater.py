@@ -1,31 +1,30 @@
-"""GitHub release update checker + verified one-click install.
+"""GitHub release update checker + verified installer-based upgrade.
 
-Flow:
-  check  → GET /repos/<repo>/releases/latest, compare semver, reject downgrades
-  install→ download ATLAS.exe asset (HTTPS only) with progress,
-           verify SHA-256 against the published checksum file,
-           spawn update.bat which waits for this process to exit, swaps the
-           exe, and relaunches. A running exe cannot overwrite itself on
-           Windows, hence the detached .bat.
+v0.3 replaces the old download-exe-and-swap-with-a-.bat mechanism (which failed
+during upgrades — see docs/CODE_REVIEW.md §13 for the root cause) with the real
+Inno Setup installer:
 
-User data (plugins/, skills/, settings.json, memory.db, models/) is never
-touched — the swap only replaces the exe. We never install silently.
+  check   → GET /repos/<repo>/releases/latest, compare semver, reject downgrades
+  install → download ATLAS-Setup-v<new>.exe to %TEMP% (HTTPS only, progress),
+            verify SHA-256 against the release's checksum file,
+            run it with /SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS.
+
+Inno owns the close-swap-relaunch and never touches %APPDATA%\\ATLAS, so user
+data survives. Nothing installs without explicit user confirmation in the HUD.
 """
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
-from .config import __version__, app_dir
+from .config import __version__
 from .log import get_logger
 
 log = get_logger("atlas.updater")
-
-ASSET_EXE = "ATLAS.exe"
-ASSET_SUM = "ATLAS.exe.sha256"
 
 
 def _semver(v: str) -> tuple:
@@ -41,7 +40,7 @@ def check_async(config, bus, notify_only: bool = False) -> None:
 
 
 def check(config, bus, notify_only: bool = False) -> dict | None:
-    """Return release info dict if a newer version exists, else None."""
+    """Return the release dict if a strictly newer version exists, else None."""
     repo = config.get("update_repo", "")
     if not repo:
         return None
@@ -54,107 +53,92 @@ def check(config, bus, notify_only: bool = False) -> dict | None:
             return None
         data = r.json()
         latest = data.get("tag_name", "")
-        if _semver(latest) <= _semver(__version__):        # reject same/downgrade
+        if _semver(latest) <= _semver(__version__):     # same or older → refuse
             log.info("up to date (v%s, latest %s)", __version__, latest or "?")
+            if notify_only:
+                bus.notify(f"You're on the latest version (v{__version__}).")
             return None
         url = data.get("html_url", f"https://github.com/{repo}/releases")
         bus.update(latest, url)
         bus.notify(f"UPDATE AVAILABLE — {latest}")
         log.info("update available: %s", latest)
         return data
-    except Exception as e:                                 # noqa: BLE001
+    except Exception as e:                               # noqa: BLE001
         log.info("update check failed: %s", e)
         return None
 
 
+def _find_setup_asset(data: dict) -> tuple[str, str] | None:
+    """Locate the (setup_url, checksum_url) pair in a release's assets. The
+    setup is 'ATLAS-Setup-*.exe'; its checksum is that name + '.sha256'."""
+    assets = {a.get("name", ""): a.get("browser_download_url", "")
+              for a in data.get("assets", [])}
+    for name, url in assets.items():
+        low = name.lower()
+        if low.startswith("atlas-setup") and low.endswith(".exe"):
+            checksum = assets.get(name + ".sha256")
+            if checksum:
+                return url, checksum
+    return None
+
+
 def install(config, bus) -> bool:
-    """Download + verify + swap. Returns True if the swap was launched (the app
-    should then quit so the .bat can replace the exe)."""
+    """Download + verify + launch the installer silently. Returns True if the
+    installer was launched (the app then quits so Inno can swap it)."""
     if not getattr(sys, "frozen", False):
-        bus.notify("Updates only apply to the built .exe, not a dev checkout.")
+        bus.notify("Updates only apply to the installed app, not a dev checkout.")
         return False
     data = check(config, bus)
     if not data:
         bus.notify("No newer release to install.")
         return False
-
-    assets = {a.get("name"): a.get("browser_download_url")
-              for a in data.get("assets", [])}
-    exe_url, sum_url = assets.get(ASSET_EXE), assets.get(ASSET_SUM)
-    if not exe_url or not sum_url:
-        bus.notify("Release is missing ATLAS.exe or its checksum — aborting.")
+    pair = _find_setup_asset(data)
+    if not pair:
+        bus.notify("Release has no ATLAS-Setup installer + checksum — aborting.")
         return False
-    if not (exe_url.startswith("https://") and sum_url.startswith("https://")):
+    setup_url, sum_url = pair
+    if not (setup_url.startswith("https://") and sum_url.startswith("https://")):
         bus.notify("Refusing non-HTTPS update URL.")
         return False
 
     from . import models
-    updir = app_dir() / "update"
-    updir.mkdir(exist_ok=True)
-    new_exe = updir / "ATLAS_new.exe"
+    dest = Path(tempfile.gettempdir()) / Path(setup_url).name
 
     bus.notify("Downloading update…")
-    if not models.download(exe_url, new_exe,
+    if not models.download(setup_url, dest,
                            progress_cb=lambda p: bus.progress("DOWNLOADING UPDATE", p)):
         bus.notify("Update download failed.")
         return False
 
-    # fetch + parse the checksum ("<sha256>  ATLAS.exe")
     try:
         import requests
         want = requests.get(sum_url, timeout=15).text.strip().split()[0].lower()
-    except Exception as e:                                 # noqa: BLE001
+    except Exception as e:                               # noqa: BLE001
         bus.notify(f"Couldn't fetch checksum: {e}")
         return False
-    got = models.sha256(new_exe).lower()
+    got = models.sha256(dest).lower()
     if got != want:
         log.error("checksum mismatch: want %s got %s", want, got)
         bus.notify("Checksum mismatch — update rejected.")
-        new_exe.unlink(missing_ok=True)
+        try:
+            dest.unlink()
+        except OSError:
+            pass
         return False
-    log.info("update verified (sha256 ok)")
+    log.info("installer verified (sha256 ok)")
 
-    _spawn_swap(new_exe)
-    bus.notify("Update verified. Restarting to apply…")
+    # Inno silent upgrade: closes the running app, swaps program files,
+    # relaunches. /SILENT shows only a progress bar (no wizard); user data in
+    # %APPDATA%\ATLAS is never touched.
+    try:
+        subprocess.Popen(
+            [str(dest), "/SILENT", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS",
+             "/NOCANCEL", "/SUPPRESSMSGBOXES"],
+            shell=False,
+            creationflags=getattr(subprocess, "DETACHED_PROCESS", 0))
+    except OSError as e:
+        bus.notify(f"Couldn't launch installer: {e}")
+        return False
+    bus.notify("Update verified. The installer will restart A.T.L.A.S.…")
     bus.quit()
     return True
-
-
-def _spawn_swap(new_exe: Path) -> None:
-    """Write and launch a detached update.bat that waits for this exe to exit,
-    swaps it, and relaunches. Handles the 'exe still locked' case with retries."""
-    cur = Path(sys.executable).resolve()
-    bat = app_dir() / "update.bat"
-    pid = os.getpid()
-    bat.write_text(f"""@echo off
-setlocal
-rem A.T.L.A.S. self-update swap. Waits for the old process to exit before
-rem replacing the locked exe, then relaunches.
-echo Applying A.T.L.A.S. update...
-:waitloop
-tasklist /FI "PID eq {pid}" 2>NUL | find "{pid}" >NUL
-if not errorlevel 1 (
-    timeout /t 1 /nobreak >NUL
-    goto waitloop
-)
-set /a tries=0
-:swap
-copy /Y "{new_exe}" "{cur}" >NUL
-if errorlevel 1 (
-    set /a tries+=1
-    if %tries% GEQ 15 (
-        echo Update failed: "{cur}" is still locked after 15 tries.
-        goto done
-    )
-    timeout /t 1 /nobreak >NUL
-    goto swap
-)
-del /Q "{new_exe}" >NUL 2>&1
-start "" "{cur}"
-:done
-del "%~f0"
-""", encoding="utf-8")
-    subprocess.Popen(["cmd", "/c", str(bat)], shell=False,
-                     creationflags=getattr(subprocess, "DETACHED_PROCESS", 0)
-                     | getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    log.info("update.bat spawned for pid %s", pid)

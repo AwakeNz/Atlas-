@@ -54,6 +54,9 @@ def main() -> int:
     log.info("=== A.T.L.A.S. v%s starting (frozen=%s) ===", __version__,
              getattr(sys, "frozen", False))
 
+    from core.singleton import create_mutex
+    create_mutex()   # lets the Inno installer detect+close us for upgrades
+
     bus = EventBus()
     llm = LazyChain(config, bus)
 

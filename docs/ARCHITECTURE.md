@@ -275,3 +275,70 @@ v0.1's 10-package cap is intentionally exceeded in v0.2 (~14): a *local* voice
 pipeline (openWakeWord, onnxruntime, faster-whisper, webrtcvad, numpy) and a
 pywebview FUI cannot be built within the old cap. Everything still lazy-imports,
 so cold start stays < 2 s (voice + provider chain init after the window shows).
+
+
+---
+
+# v0.3 addendum — installer, data separation, in-place upgrades
+
+## 15. paths.py — one place for every location
+
+Program files are now read-only (Program Files), so all user data moved to
+`%APPDATA%\ATLAS`. `core/paths.py` is the single authority:
+
+```
+program_dir()  install dir / dev repo (read-only)
+bundle_dir()   PyInstaller _MEIPASS (bundled plugins/skills/web/wake/assets)
+data_dir()     %APPDATA%\ATLAS  ← settings, apps.json, plugins, skills,
+               memory.db, models/, atlas.log
+```
+
+Every module imports its paths here (`log_path`, `memory_db`, `plugins_dir`,
+`skills_dir`, `models_dir`, `settings_path`); `config.app_dir` is kept only as a
+compatibility alias to `data_dir`. `migrate_legacy()` runs once on first launch
+of an installed build and moves any files a pre-0.3 build wrote next to the exe
+into `data_dir` — never overwriting newer data. It's a no-op in a dev checkout,
+so the repo's own `plugins/`/`skills/` are never disturbed. Cost is a handful of
+`os.path.exists` checks → no measurable cold-start impact.
+
+## 16. Inno Setup installer + uninstaller
+
+`installer/atlas.iss` produces `ATLAS-Setup-v<version>.exe` (the release asset).
+
+- **Fixed `AppId` GUID** ⇒ Windows treats every future version as an *upgrade*
+  of one app (single Apps & features entry), never a second install.
+- **Data separation is structural:** the installer only ever writes to
+  `{app}` (Program Files); it never creates or touches `%APPDATA%\ATLAS`. An
+  upgrade replaces program files and leaves user data byte-for-byte intact.
+- **`AppMutex=Global\ATLAS_Running_Mutex`** matches the mutex the app creates
+  at startup (`core/singleton.py`), so Setup detects a running instance;
+  `CloseApplications`/`RestartApplications` (Restart Manager) close and relaunch
+  it for a seamless in-place upgrade.
+- **Options:** desktop shortcut, launch-at-startup via the **HKCU Run key**
+  (not the Startup folder), launch-after-install.
+- **Uninstaller** (auto, in Apps & features) removes program files, shortcuts
+  and the Run key (`uninsdeletevalue`); a `[Code]` step asks *"Keep your
+  settings, memory and plugins?"* (default **Yes**) and only deletes
+  `%APPDATA%\ATLAS` if the user declines — and never in silent mode.
+- **Size/speed:** `Compression=lzma2/max` + `SolidCompression`; a single small
+  exe installs in well under 10 s on an SSD.
+
+## 17. Updater rework (installer-based)
+
+The download-exe + `.bat`-swap is gone. Now: check latest release → semver
+compare (reject downgrades) → download `ATLAS-Setup-v<new>.exe` to `%TEMP%`
+(HTTPS only) with progress → verify SHA-256 against the release's `.sha256` →
+run it `/SILENT /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS`. Inno owns the
+close-swap-relaunch that the `.bat` botched, and never touches user data. Still
+gated on explicit HUD confirmation. Release side: `build.py` (icon → PyInstaller
+→ iscc → checksums → `dist/release/`) and the updated Actions workflow.
+
+## 18. Icon pipeline
+
+`build.py:make_icon` converts the supplied `icon.png` → `assets/atlas.ico` with
+all standard sizes (16/24/32/48/64/128/256), high-quality LANCZOS downscale,
+alpha preserved, non-square art padded (not stretched). Missing `icon.png` →
+generated placeholder + warning (build never fails). The `.ico` is wired into
+the exe (PyInstaller `--icon`), tray glyph, tkinter window icon, installer
+wizard (`SetupIconFile`), Add/Remove Programs (`UninstallDisplayIcon`) and all
+shortcuts.
