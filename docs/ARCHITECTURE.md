@@ -193,3 +193,85 @@ own folder (no absolute paths, no `..`, symlinks that resolve outside are
 rejected after `resolve()`). The tray icon (`ui/tray.py`, pystray) exposes
 show/hide, skills list/reload, and quit — every action posts to the EventBus
 or calls the thread-safe `SkillsIndex`; it never touches tkinter.
+
+
+---
+
+# v0.2 addendum — provider chain · FUI · hands-free voice · auto-update
+
+## 10. LLM provider fallback chain
+
+All three providers speak the OpenAI wire format, so one `OpenAICompatProvider`
+(raw HTTPS) covers them; only base URL/key/model differ.
+
+```
+gemini (primary)  →  https://generativelanguage.googleapis.com/v1beta/openai
+groq   (fallback) →  https://api.groq.com/openai/v1
+cerebras          →  https://api.cerebras.ai/v1   (model list queried live)
+```
+
+`ProviderChain` is **sticky within a request, resettable between requests**:
+on a 429/quota/5xx/network error it advances to the next provider and emits
+`PROVIDER → GROQ` to the HUD; a real error (bad key/request) propagates
+immediately instead of burning the whole chain. The agent calls `reset()` at
+the start of each user turn so it always retries from Gemini. No index ever
+wraps past the end — the chain is tried at most once per call (no infinite
+loop). Cerebras' free catalog drifts, so its model is discovered at startup
+from `GET /models` rather than hardcoded.
+
+**Token diet.** A cheap heuristic (`Agent._is_trivial`: short + an action verb
+like open/volume/lock) routes one-shot commands to each provider's *small*
+model (`gemini-2.5-flash-lite` / `llama-3.1-8b-instant`); the big model is used
+only once a request needs a second step. History is trimmed to the last N=12
+turns, with older turns folded into a single system summary line so context
+stays bounded.
+
+## 11. UI reversal — pywebview becomes primary (tkinter is the fallback)
+
+v0.1 chose tkinter to avoid the WebView2 dependency. v0.2's brief calls for
+glassmorphism depth, animated data-readout panels, a boot sequence and richer
+micro-interactions — all of which are HTML/CSS-native and awkward on a Canvas.
+So the decision is **reversed on purpose**: pywebview (vanilla HTML/CSS/JS, no
+JS framework) is now primary, and `main._make_hud` falls back to the original
+tkinter HUD automatically if pywebview/WebView2 is unavailable. Both consume
+the same EventBus and expose the same `run()`/`set_speaker()` surface, so the
+agent/voice/tray code is UI-agnostic. The JS bridge: a pump thread drains the
+bus and pushes batched events via `window.evaluate_js`; JS calls back through
+`pywebview.api`. Style follows the ui-ux-pro-max **HUD / Sci-Fi FUI** guidance
+(1px lines, glow, corner brackets, scanlines, Orbitron+JetBrains Mono) with its
+accessibility discipline layered on (≥4.5:1 body text, 150–300ms motion, full
+`prefers-reduced-motion` fallback).
+
+## 12. Hands-free voice pipeline (all local)
+
+```
+continuous 16kHz mic ─► openWakeWord (ONNX, 80ms frames) ─► score>thresh
+   ─► chime + orb:listening ─► webrtcvad records to 1.2s silence
+   ─► faster-whisper (base, CPU int8) ─► agent.submit ─► TTS
+```
+
+CPU discipline: the sounddevice callback only *enqueues* frames; all ONNX
+inference is on one worker that blocks on the queue, keeping idle cost to the
+mel+embedding pass per 80ms (< 3%). **Mute genuinely stops capture** — the
+input stream is closed, not just ignored. Push-to-talk and text remain
+fallbacks. Whisper + wake models are **not bundled**: they download to
+`models/` on first run (resumable, HUD progress bar), and everything after is
+offline. Audio never leaves the machine.
+
+## 13. Verified update path
+
+`GET /repos/<repo>/releases/latest` → semver compare (rejects same/older) →
+on confirm, download the `ATLAS.exe` asset (HTTPS only) with progress → verify
+SHA-256 against the release's `ATLAS.exe.sha256` → spawn a detached
+`update.bat` that waits for the process to exit, swaps the locked exe (retrying
+up to 15× if still locked), and relaunches. Never silent; `plugins/`, `skills/`,
+`settings.json`, `memory.db`, `models/` are never touched. The release side is
+`.github/workflows/release.yml` (builds, checksums, drafts a Release on tag
+push) + `release.md`.
+
+## 14. Dependency budget — deliberate expansion
+
+v0.1's 10-package cap is intentionally exceeded in v0.2 (~14): a *local* voice
+pipeline (openWakeWord, onnxruntime, faster-whisper, webrtcvad, numpy) and a
+pywebview FUI cannot be built within the old cap. Everything still lazy-imports,
+so cold start stays < 2 s (voice + provider chain init after the window shows).

@@ -1,5 +1,7 @@
 # A.T.L.A.S. — Autonomous Task & Logic Assistance System
 
+**v0.2** · Gemini-first LLM chain · hands-free wake word · pywebview FUI · verified auto-update
+
 A general-purpose, plugin-based AI desktop assistant for Windows. A frameless,
 always-on-top HUD with an animated violet orb: summon it with **Ctrl+Space**,
 type or hold **F8** to talk, and it acts on your PC through hot-loaded
@@ -178,6 +180,58 @@ The exe self-heals: run it in an empty folder and it recreates
 | `editor_command` | e.g. `code` — editor for `write_code` (default: OS association) |
 | `max_agent_steps` | ReAct step budget (default 8) |
 | `update_repo` | `owner/repo` checked for newer releases |
+
+## LLM providers (Gemini-first, auto-fallback)
+
+A.T.L.A.S. tries providers top-to-bottom and falls to the next on a rate-limit
+or quota error, showing `PROVIDER → GROQ` in the HUD. Add a free key to any of
+them in `settings.json`:
+
+```json
+"providers": [
+  {"name": "gemini",   "model": "gemini-2.5-flash",        "api_key": "..."},
+  {"name": "groq",     "model": "llama-3.3-70b-versatile", "api_key": "..."},
+  {"name": "cerebras", "model": "",                        "api_key": "..."}
+]
+```
+
+- **Gemini** (primary): free key at [aistudio.google.com](https://aistudio.google.com/apikey).
+- **Groq**: [console.groq.com](https://console.groq.com).
+- **Cerebras**: model left blank → discovered from its live catalog at startup.
+
+Trivial one-shot commands ("open notepad", "mute") are routed to a cheaper
+small model automatically; the big model is used only for multi-step reasoning.
+
+## Hands-free voice — "Atlas" / "Hey Atlas"
+
+Say **"Atlas"** (or "Hey Atlas") and A.T.L.A.S. wakes, chimes, listens until you
+stop talking, transcribes, and acts — no key press. It's built in: **openWakeWord**
+for the wake phrase and **faster-whisper** for transcription, both running
+locally on CPU.
+
+- **First run** downloads the voice models into `models/` with a HUD progress
+  bar (`INITIALIZING VOICE SYSTEMS… 42%`). After that, **voice is fully
+  offline**.
+- **Privacy:** audio never leaves your machine. Wake detection and speech
+  recognition are 100% local — nothing is streamed to any server.
+- Tray → **Mute microphone** actually stops capture (the icon shows an amber
+  slash). Push-to-talk (`F8`) and typing always work as fallbacks.
+- `settings.json`: `wake_word_enabled`, `wake_sensitivity` (0–1), `wake_phrases`.
+- The wake model `atlas.onnx` is trained from synthetic speech — see
+  `wake/TRAINING.md`. Until you train it, hands-free falls back to a bundled
+  pretrained phrase.
+
+## Updates (verified, one-click, never silent)
+
+On startup (and via tray → **Check for updates**) A.T.L.A.S. checks this repo's
+latest GitHub Release. If it's newer you'll see `UPDATE AVAILABLE — vX.Y.Z`.
+Click **INSTALL** and it downloads the new `ATLAS.exe`, **verifies its SHA-256**
+against the checksum published in the release, then swaps and relaunches via a
+small `update.bat` (a running exe can't overwrite itself on Windows). Downgrades
+and unverified downloads are refused. Your `plugins/`, `skills/`, `settings.json`,
+`memory.db` and `models/` are never touched by an update.
+
+`settings.json`: `auto_check_updates`, `update_channel`, `update_repo`.
 
 ## Architecture & review
 

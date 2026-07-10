@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>A.T.L.A.S.</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- Boot overlay: fades away after "A.T.L.A.S. ONLINE" -->
+<div id="boot" class="boot">
+  <div class="boot-grid" aria-hidden="true"></div>
+  <div class="boot-text"><span class="boot-title">A.T.L.A.S.</span>
+    <span class="boot-sub" id="bootSub">INITIALIZING…</span></div>
+  <div class="boot-bar"><i id="bootFill"></i></div>
+</div>
+
+<main class="hud" id="hud" hidden>
+  <!-- corner brackets -->
+  <span class="bracket tl"></span><span class="bracket tr"></span>
+  <span class="bracket bl"></span><span class="bracket br"></span>
+  <div class="scan" aria-hidden="true"></div>
+
+  <header class="eyebrow">
+    <span class="dotname">A.T.L.A.S.</span>
+    <span class="ver" id="ver">· v0.2.0</span>
+    <button class="icon-btn" id="micBtn" title="Mute microphone" aria-label="Toggle microphone">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path id="micPath"
+        d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1A7 7 0 0 0 19 12h-2z"/></svg>
+    </button>
+  </header>
+
+  <section class="stage">
+    <canvas id="orb" width="260" height="260" aria-label="A.T.L.A.S. status orb"></canvas>
+    <div class="state-label" id="stateLabel">IDLE</div>
+
+    <!-- animated data-readout side panels -->
+    <aside class="panel left" aria-hidden="true">
+      <div class="readout"><label>CPU</label><div class="meter"><i id="cpuBar"></i></div><span id="cpuVal">0%</span></div>
+      <div class="readout"><label>RAM</label><div class="meter"><i id="ramBar"></i></div><span id="ramVal">0%</span></div>
+    </aside>
+    <aside class="panel right" aria-hidden="true">
+      <div class="kv"><label>PROVIDER</label><span id="provVal">—</span></div>
+      <div class="kv"><label>TOKENS</label><span id="tokVal">0</span></div>
+    </aside>
+  </section>
+
+  <section class="stream-wrap">
+    <div class="stream" id="stream" role="log" aria-live="polite"></div>
+  </section>
+
+  <div class="progress" id="progress" hidden>
+    <span id="progLabel">INITIALIZING VOICE SYSTEMS</span>
+    <div class="progress-bar"><i id="progFill"></i></div>
+  </div>
+
+  <div class="update-banner" id="updateBanner" hidden>
+    <span id="updateText">UPDATE AVAILABLE</span>
+    <button id="updateBtn" class="pill">INSTALL</button>
+  </div>
+
+  <footer class="inputbar">
+    <span class="prompt">&#10095;</span>
+    <input id="entry" type="text" autocomplete="off" spellcheck="false"
+           placeholder="Type a command, or say “Atlas”…" aria-label="Command input">
+  </footer>
+</main>
+
+<!-- confirmation modal -->
+<div class="modal-scrim" id="scrim" hidden>
+  <div class="modal" role="alertdialog" aria-labelledby="mTitle" aria-describedby="mDetail">
+    <div class="modal-head">⚠ CONFIRMATION REQUIRED</div>
+    <div class="modal-title" id="mTitle"></div>
+    <pre class="modal-detail" id="mDetail"></pre>
+    <div class="modal-actions">
+      <button id="denyBtn" class="btn deny">DENY <kbd>Esc</kbd></button>
+      <button id="allowBtn" class="btn allow">ALLOW</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

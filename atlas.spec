@@ -19,10 +19,17 @@ a = Analysis(
     ["src/main.py"],
     pathex=["src"],
     binaries=[],
-    datas=[("plugins", "plugins"), ("skills", "skills")],
+    # web/ ships the FUI; wake/ ships the wake-word docs (and atlas.onnx once
+    # trained). Heavy voice/ONNX models are NOT bundled — they download to
+    # models/ on first run (see core/models.py) to keep the exe small.
+    datas=[("plugins", "plugins"), ("skills", "skills"),
+           ("src/ui/web", "ui/web"), ("wake", "wake")],
     hiddenimports=[
         # lazily imported by core/ui at runtime
-        "requests", "edge_tts", "pystray", "pystray._win32",
+        "requests", "edge_tts", "pystray", "pystray._win32", "webview",
+        # voice pipeline (lazy)
+        "onnxruntime", "openwakeword", "openwakeword.model", "faster_whisper",
+        "webrtcvad", "numpy",
         # lazily imported by plugins loaded from disk
         "keyboard", "pygetwindow", "pydirectinput", "sounddevice",
         "PIL.ImageGrab", "PIL.Image", "PIL.ImageDraw",
@@ -31,7 +38,7 @@ a = Analysis(
     runtime_hooks=[],
     excludes=[
         "unittest", "pydoc", "doctest", "test",
-        "numpy", "matplotlib", "scipy",           # never ours; block accidental pulls
+        "matplotlib", "scipy",                    # never ours; block accidental pulls
         "PIL.ImageTk", "PIL.ImageQt", "PIL.ImageShow",
         "setuptools", "pip", "wheel",
         "xmlrpc", "curses", "lib2to3",

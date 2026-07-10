@@ -1,9 +1,29 @@
-# Dependency budget: 8 of 10 allowed packages. Everything else is stdlib.
-requests>=2.31        # Groq API (chat SSE + whisper STT), Discord, updater
-edge-tts>=6.1         # British-male neural TTS (en-GB-RyanNeural)
-keyboard>=0.13        # global Ctrl+Space hotkey + push-to-talk key
-pygetwindow>=0.0.9    # window_control plugin
-pydirectinput>=1.0.4  # game_interact plugin (DirectInput-level events)
-sounddevice>=0.4.6    # microphone capture for push-to-talk
-Pillow>=10.0          # screenshots (ImageGrab) + tray icon glyph
-pystray>=0.19         # system tray: show/hide, skills list/reload, quit
+# A.T.L.A.S. runtime dependencies.
+#
+# NOTE ON THE BUDGET: v0.1 capped deps at 10. v0.2 adds a local voice pipeline
+# (offline wake word + Whisper) and a pywebview FUI — capabilities that
+# intrinsically require the packages below. The count is now ~14; this is a
+# deliberate, feature-driven expansion, documented in docs/ARCHITECTURE.md.
+# Everything still lazy-imports so cold start stays under 2 s.
+
+# --- core / cloud ---
+requests>=2.31          # provider chain (Gemini/Groq/Cerebras), Discord, updater
+edge-tts>=6.1           # British-male neural TTS (en-GB-RyanNeural)
+
+# --- UI ---
+pywebview>=5.0          # frameless FUI window (HTML/CSS/JS); tkinter is fallback
+
+# --- input / system ---
+keyboard>=0.13          # global Ctrl+Space hotkey + push-to-talk
+pygetwindow>=0.0.9      # window_control plugin
+pydirectinput>=1.0.4    # game_interact plugin
+sounddevice>=0.4.6      # microphone capture (wake word + push-to-talk)
+Pillow>=10.0            # screenshots + tray icon glyph
+pystray>=0.19           # system tray menu
+
+# --- local voice pipeline (offline after first-run download) ---
+openwakeword>=0.6.0     # wake word "atlas" / "hey atlas" (ONNX)
+onnxruntime>=1.17       # CPU inference backend for openWakeWord
+faster-whisper>=1.0     # local speech-to-text (CTranslate2, CPU int8)
+webrtcvad>=2.0.10       # end-of-speech (silence) detection
+numpy>=1.24             # audio buffers for wake + whisper

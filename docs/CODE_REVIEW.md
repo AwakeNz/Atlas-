@@ -208,3 +208,55 @@ may have changed on disk, which is the same benign race as the user editing
 a file mid-read). Builtin tools (`use_skill` etc.) are registered before
 `load_all()` and re-registered on rescan, so a `plugins/use_skill.py` file
 cannot shadow them — first registration wins. **Verified.**
+
+
+---
+
+# v0.2 review — provider chain · updater · mic thread
+
+## 10. Provider fallback chain
+
+- **No infinite loop.** `ProviderChain.chat` iterates `offset in
+  range(len(providers))` from the sticky index and never wraps past the end;
+  a fully-exhausted chain raises once (verified: each fake provider `.calls==1`).
+- **Sticky vs reset.** Within a multi-step request the working provider is
+  reused (so step 2 doesn't re-hit an exhausted Gemini); `Agent._run` calls
+  `reset()` at the top of each user turn to return to the primary.
+- **Retryable vs fatal.** Only 429 / quota-worded 402·403 / 5xx / network
+  errors advance the chain (`QuotaError`). A plain 4xx (bad key, malformed
+  request) is a real `LLMError` and propagates immediately — verified the next
+  provider is *not* tried on a hard error.
+- **Keys never logged.** Keys live only in the `requests.Session`
+  `Authorization` header; log lines carry provider *names* and HTTP status,
+  never the key or the header. Grep of the module confirms no `api_key` reaches
+  `log`.
+
+## 11. Updater
+
+- **Checksum mandatory.** `install()` aborts if the release lacks either
+  `ATLAS.exe` or `ATLAS.exe.sha256`; after download it compares
+  `models.sha256(file)` to the published hash and **rejects on mismatch**
+  (deletes the file, notifies) before any swap.
+- **HTTPS only.** Both asset URLs are checked for an `https://` prefix; a
+  non-HTTPS URL is refused.
+- **Reject downgrades.** `_semver(latest) <= _semver(current)` → no update;
+  same-version and older tags are ignored (verified).
+- **Locked-exe handling.** `update.bat` waits for the PID to disappear, then
+  retries the `copy` up to 15× with 1s backoff; if still locked it logs a clear
+  failure instead of corrupting the exe. User data dirs are never in the swap.
+- **Frozen-only.** Refuses to "update" a dev checkout (`sys.frozen` guard).
+
+## 12. Mic thread / mute
+
+- **No UI-thread deadlock.** The wake worker only touches the EventBus and its
+  own queue/stream; it never calls into pywebview/tkinter. The audio callback
+  does no work beyond a non-blocking `put_nowait` (drops on backpressure), so it
+  can't block or be blocked by the UI pump.
+- **Mute actually stops capture.** `set_muted(True)` closes the sounddevice
+  input stream and flushes the frame queue — it does not merely discard
+  results; unmute reopens it. The callback also early-returns while muted as a
+  belt-and-braces guard.
+- **Recovery.** If the stream drops (device change), the loop re-opens it on
+  the next idle tick rather than wedging.
+- **Fail-open to text.** Any failure to load ONNX/whisper disables voice with a
+  log line; text input and the hotkey are unaffected.

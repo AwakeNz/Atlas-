@@ -21,10 +21,12 @@ ACCENT_HOT = "#d8b4fe"    # hot edge for the orb core
 ACCENT_DIM = "#6d28d9"
 GHOST = "#190d25"         # rgba(168,85,247,.12) pre-blended over VOID
 SCAN = "#0b0613"          # scanline stripe
-AMBER = "#f59e0b"         # tool-execution state (contrast against violet)
+AMBER = "#ffb347"         # tool-execution state (contrast against violet)
 CHROMA = "#010203"        # magic transparent color (Windows -transparentcolor)
 
-EYEBROW = "A.T.L.A.S. · v0.1"
+from core.config import __version__
+
+EYEBROW = f"A.T.L.A.S. · v{__version__}"
 BACKRONYM = "AUTONOMOUS TASK & LOGIC ASSISTANCE SYSTEM"
 
 W, H = 460, 580
