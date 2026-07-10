@@ -87,9 +87,14 @@ class WebHud:
         import webview
 
         html_path = Path(__file__).resolve().parent / "web" / "index.html"
+        # easy_drag=False: with easy_drag the ENTIRE window is a drag surface,
+        # which swallows clicks/taps (buttons like the confirm modal's ALLOW /
+        # DENY never fire, badly so on touch screens). Instead we mark only the
+        # eyebrow header draggable via the `pywebview-drag-region` CSS class, so
+        # every button and input stays tappable.
         self._window = webview.create_window(
             "A.T.L.A.S.", url=html_path.as_uri(), js_api=self.api,
-            width=520, height=680, frameless=True, easy_drag=True,
+            width=520, height=680, frameless=True, easy_drag=False,
             on_top=True, transparent=True, background_color="#050308",
             resizable=False)
         webview.start(self._pump, private_mode=False)   # blocks until window closed

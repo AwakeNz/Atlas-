@@ -26,6 +26,11 @@ html, body {
   color: var(--text); font-family: var(--font-data);
   -webkit-user-select: none; user-select: none;
 }
+/* only the eyebrow drags the frameless window; everything else stays tappable.
+   touch-action: manipulation kills the 300ms tap delay / double-tap zoom. */
+.pywebview-drag-region { cursor: move; }
+button, input, .btn, .pill, .icon-btn { touch-action: manipulation; }
+button, .btn, .pill, .icon-btn { min-height: 40px; }   /* ≥40px touch targets */
 
 /* ---------- boot ---------- */
 .boot {
