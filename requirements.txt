@@ -1,0 +1,9 @@
+# Dependency budget: 8 of 10 allowed packages. Everything else is stdlib.
+requests>=2.31        # Groq API (chat SSE + whisper STT), Discord, updater
+edge-tts>=6.1         # British-male neural TTS (en-GB-RyanNeural)
+keyboard>=0.13        # global Ctrl+Space hotkey + push-to-talk key
+pygetwindow>=0.0.9    # window_control plugin
+pydirectinput>=1.0.4  # game_interact plugin (DirectInput-level events)
+sounddevice>=0.4.6    # microphone capture for push-to-talk
+Pillow>=10.0          # screenshots (ImageGrab) + tray icon glyph
+pystray>=0.19         # system tray: show/hide, skills list/reload, quit

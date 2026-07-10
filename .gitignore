@@ -1,0 +1,11 @@
+# dev-time artifacts that live next to the exe / build outputs
+settings.json
+apps.json
+memory.db
+memory.db-*
+atlas.log*
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
