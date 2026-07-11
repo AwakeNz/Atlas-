@@ -44,6 +44,7 @@ class WakeWord:
         self._stream = None
         self._oww = None
         self._thread = None
+        self._phrase = "atlas"
 
     # -- lifecycle --
 
@@ -130,6 +131,7 @@ class WakeWord:
                   "embedding_model_path": str(oww_dir / "embedding_model.onnx")}
         if atlas.exists():
             kwargs["wakeword_models"] = [str(atlas)]
+            self._phrase = "atlas"
         else:
             # graceful fallback: use a bundled openWakeWord pretrained phrase so
             # hands-free still works before a custom atlas.onnx is trained.
@@ -139,11 +141,13 @@ class WakeWord:
             except Exception:                 # noqa: BLE001
                 pass
             kwargs["wakeword_models"] = ["hey_jarvis"]
+            self._phrase = "hey jarvis"
         return Model(**kwargs)
 
     def _run(self) -> None:
         if not self.config.get("wake_word_enabled", True):
             return
+        self._phrase = "atlas"
         # wait for model files (downloaded post-boot) before starting inference
         from core.paths import models_dir
         needed = ["melspectrogram.onnx", "embedding_model.onnx"]
@@ -153,16 +157,27 @@ class WakeWord:
             if all((models_dir() / n).exists() for n in needed):
                 break
             time.sleep(0.5)
+        if not all((models_dir() / n).exists() for n in needed):
+            self.bus.notify("Voice models didn't download — hands-free is off. "
+                            "Push-to-talk and text still work.")
+            log.warning("wake models missing after wait — voice disabled")
+            return
         try:
             self._oww = self._load_oww()
         except Exception as e:                # noqa: BLE001
             log.warning("wake word disabled (load failed): %s", e)
+            self.bus.notify(f"Voice unavailable ({e}). See atlas.log.")
             return
 
         self._open_stream()
         sens = float(self.config.get("wake_sensitivity", 0.5))
         threshold = 0.5 + (0.5 - sens) * 0.6  # higher sensitivity → lower threshold
-        log.info("wake word armed (threshold %.2f)", threshold)
+        log.info("wake word armed (threshold %.2f, phrase '%s')", threshold, self._phrase)
+        if self._stream is not None:
+            self.bus.notify(f"Voice ready — say “{self._phrase}”.")
+        else:
+            self.bus.notify("Voice loaded but no microphone was opened. "
+                            "Check Windows mic permissions.")
 
         while not self._stop.is_set():
             try:

@@ -19,13 +19,13 @@ __version__ = "0.3.0"
 _DEFAULT_SETTINGS = {
     # -- LLM provider fallback chain (tried top-to-bottom; 429/quota → next) --
     "providers": [
-        {"name": "gemini",   "model": "gemini-2.5-flash",        "api_key": ""},
+        {"name": "gemini",   "model": "gemini-2.0-flash",        "api_key": ""},
         {"name": "groq",     "model": "llama-3.3-70b-versatile", "api_key": ""},
         {"name": "cerebras", "model": "",                        "api_key": ""},
     ],
     # token diet: trivial one-shot commands route to the cheap tier per provider
     "small_models": {
-        "gemini":   "gemini-2.5-flash-lite",
+        "gemini":   "gemini-2.0-flash-lite",
         "groq":     "llama-3.1-8b-instant",
         "cerebras": "",
     },

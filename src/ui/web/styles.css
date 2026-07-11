@@ -159,6 +159,13 @@ input:focus-visible { outline: 2px solid var(--accent-hot); outline-offset: 2px;
 #keyInput:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(168,85,247,.2); }
 .keyhint { font-size: 11px; color: var(--muted); text-decoration: none; }
 .keyhint:hover { color: var(--accent); }
+.keymodelrow { display: flex; align-items: center; gap: var(--sp); }
+.keymodelrow label { font-size: 11px; letter-spacing: .1em; color: var(--muted); }
+#keyModel {
+  flex: 1; background: var(--void-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; color: var(--accent-hot); font-family: var(--font-body); font-size: 13px;
+}
+#keyModel:focus { border-color: var(--accent); outline: none; }
 
 /* ---------- input ---------- */
 .inputbar { display: flex; align-items: center; gap: var(--sp); padding: var(--sp) calc(var(--sp) * 2) calc(var(--sp) * 1.75); }

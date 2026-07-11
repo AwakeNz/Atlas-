@@ -19,7 +19,7 @@ const els = {
   updateBanner: $("updateBanner"), updateText: $("updateText"), updateBtn: $("updateBtn"),
   scrim: $("scrim"), mTitle: $("mTitle"), mDetail: $("mDetail"), allow: $("allowBtn"), deny: $("denyBtn"),
   keyBtn: $("keyBtn"), keybar: $("keybar"), keyInput: $("keyInput"), keySave: $("keySave"),
-  keyRow: $("keyRow"), keyDone: $("keyDone"), keyRestart: $("keyRestart"),
+  keyRow: $("keyRow"), keyDone: $("keyDone"), keyRestart: $("keyRestart"), keyModel: $("keyModel"),
 };
 
 /* ---------------- amplitude bridge ---------------- */
@@ -263,9 +263,11 @@ function toggleKeybar(force) {
 }
 function saveKey() {
   const k = els.keyInput.value.trim();
-  if (!k) { els.keyInput.focus(); return; }
+  const model = els.keyModel ? els.keyModel.value : "";
+  if (!k && !model) { els.keyInput.focus(); return; }
+  // a gsk_ key is Groq; otherwise Gemini (the model box only applies to Gemini)
   const prov = /^gsk_/.test(k) ? "groq" : "gemini";
-  Promise.resolve(callApi("save_api_key", k, prov)).then((ok) => {
+  Promise.resolve(callApi("save_api_key", k, prov, prov === "gemini" ? model : "")).then((ok) => {
     if (ok !== false) { els.keyRow.hidden = true; els.keyDone.hidden = false; els.keyInput.value = ""; }
   });
 }

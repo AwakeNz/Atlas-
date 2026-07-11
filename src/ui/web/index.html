@@ -70,6 +70,15 @@
              placeholder="AIza… (Gemini) or gsk_… (Groq)" aria-label="API key">
       <button id="keySave" class="pill">SAVE</button>
     </div>
+    <div class="keymodelrow">
+      <label for="keyModel">Model</label>
+      <select id="keyModel" aria-label="Gemini model">
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+        <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+        <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+      </select>
+    </div>
     <div class="keydone" id="keyDone" hidden>
       <span>Key saved. Restart so A.T.L.A.S. can read it.</span>
       <button id="keyRestart" class="pill">RESTART NOW</button>

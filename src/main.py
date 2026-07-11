@@ -101,7 +101,7 @@ def main() -> int:
         hud.wire(mic_toggle=controls.get("mic_toggle"),
                  check_updates=controls["check_updates"],
                  install_update=controls["install_update"],
-                 save_key=lambda key, provider: _save_api_key(config, key, provider),
+                 save_key=lambda key, provider, model="": _save_api_key(config, key, provider, model),
                  restart=lambda: _restart_app(bus, log),
                  has_key=lambda: _has_any_key(config))
 
@@ -180,15 +180,19 @@ def _has_any_key(config) -> bool:
     return any(p.get("api_key") for p in config.get("providers", []) or [])
 
 
-def _save_api_key(config, key: str, provider: str = "gemini") -> None:
-    """Store the pasted key on the named provider (or the first one) and persist
-    settings.json so a restart picks it up."""
+def _save_api_key(config, key: str, provider: str = "gemini", model: str = "") -> None:
+    """Store the pasted key and/or model on the named provider (or the first
+    one) and persist settings.json so a restart picks it up. Empty values are
+    left untouched."""
     providers = config.get("providers", []) or []
     target = next((p for p in providers if p.get("name") == provider), None)
     if target is None and providers:
         target = providers[0]
     if target is not None:
-        target["api_key"] = key.strip()
+        if key.strip():
+            target["api_key"] = key.strip()
+        if model.strip():
+            target["model"] = model.strip()
         config.set("providers", providers)
 
 

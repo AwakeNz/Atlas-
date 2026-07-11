@@ -40,10 +40,11 @@ class Api:
         has_key = bool(self.has_key_cb()) if self.has_key_cb else True
         return {"version": __version__, "has_key": has_key}
 
-    def save_api_key(self, key, provider="gemini"):
-        """Persist an API key into settings.json (via the wired callback)."""
-        if self.save_key_cb and key and key.strip():
-            self.save_key_cb(key.strip(), provider)
+    def save_api_key(self, key, provider="gemini", model=""):
+        """Persist an API key and/or model into settings.json (via the wired
+        callback). Either may be empty; only non-empty values are written."""
+        if self.save_key_cb and ((key and key.strip()) or (model and model.strip())):
+            self.save_key_cb((key or "").strip(), provider, (model or "").strip())
             return True
         return False
 
