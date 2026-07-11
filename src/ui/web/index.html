@@ -4,26 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>A.T.L.A.S.</title>
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<!-- Boot overlay: fades away after "A.T.L.A.S. ONLINE" -->
+<!-- Boot: the seismic line draws in L→R, then the wordmark resolves. ≤1.5s. -->
 <div id="boot" class="boot">
-  <div class="boot-grid" aria-hidden="true"></div>
-  <div class="boot-text"><span class="boot-title">A.T.L.A.S.</span>
-    <span class="boot-sub" id="bootSub">INITIALIZING…</span></div>
-  <div class="boot-bar"><i id="bootFill"></i></div>
+  <canvas id="bootScope" class="boot-scope" aria-hidden="true"></canvas>
+  <div class="boot-word" id="bootWord">A·T·L·A·S</div>
+  <div class="boot-sub" id="bootSub">ONLINE</div>
+  <div class="boot-skip">press any key to skip</div>
 </div>
 
 <main class="hud" id="hud" hidden>
-  <!-- corner brackets -->
-  <span class="bracket tl"></span><span class="bracket tr"></span>
-  <span class="bracket bl"></span><span class="bracket br"></span>
-  <div class="scan" aria-hidden="true"></div>
-
-  <header class="eyebrow pywebview-drag-region">
-    <span class="dotname">A.T.L.A.S.</span>
-    <span class="ver" id="ver">· v0.2.0</span>
+  <header class="topbar pywebview-drag-region">
+    <h1 class="wordmark" id="wordmark">A·T·L·A·S</h1>
+    <span class="ver" id="ver">v0.2.0</span>
+    <span class="topspacer"></span>
     <button class="icon-btn" id="keyBtn" title="API key" aria-label="API key">
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path
         d="M7 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2.83-2H21v2h-2v2h-2v-2h-2.17A5 5 0 1 1 9.83 12z"/></svg>
@@ -34,24 +31,26 @@
     </button>
   </header>
 
-  <section class="stage">
-    <canvas id="orb" width="260" height="260" aria-label="A.T.L.A.S. status orb"></canvas>
-    <div class="state-label" id="stateLabel">IDLE</div>
-
-    <!-- animated data-readout side panels -->
-    <aside class="panel left" aria-hidden="true">
-      <div class="readout"><label>CPU</label><div class="meter"><i id="cpuBar"></i></div><span id="cpuVal">0%</span></div>
-      <div class="readout"><label>RAM</label><div class="meter"><i id="ramBar"></i></div><span id="ramVal">0%</span></div>
-    </aside>
-    <aside class="panel right" aria-hidden="true">
-      <div class="kv"><label>PROVIDER</label><span id="provVal">—</span></div>
-      <div class="kv"><label>TOKENS</label><span id="tokVal">0</span></div>
-    </aside>
+  <!-- THE signature: seismic voiceline -->
+  <section class="scope-wrap">
+    <canvas id="scope" aria-label="A.T.L.A.S. status readout"></canvas>
+    <div class="statusline">
+      <span class="state-label" id="stateLabel">IDLE</span>
+      <span class="ticker" id="ticker"></span>
+    </div>
   </section>
 
   <section class="stream-wrap">
     <div class="stream" id="stream" role="log" aria-live="polite"></div>
   </section>
+
+  <!-- collapsible readouts: hidden by default, Tab toggles -->
+  <aside class="readouts" id="readouts" hidden aria-label="System readouts">
+    <div class="ro"><label>PROVIDER</label><span id="provVal">—</span></div>
+    <div class="ro"><label>TOKENS</label><span id="tokVal">0</span></div>
+    <div class="ro"><label>CPU</label><span id="cpuVal">0%</span></div>
+    <div class="ro"><label>RAM</label><span id="ramVal">0%</span></div>
+  </aside>
 
   <div class="progress" id="progress" hidden>
     <span id="progLabel">INITIALIZING VOICE SYSTEMS</span>
@@ -63,7 +62,7 @@
     <button id="updateBtn" class="pill">INSTALL</button>
   </div>
 
-  <!-- API key panel: shown automatically when no key is configured -->
+  <!-- API key panel: auto-shown on first run when no key is configured -->
   <div class="keybar" id="keybar" hidden>
     <label class="keylabel" id="keyLabel">Paste your API key to activate A.T.L.A.S.</label>
     <div class="keyrow" id="keyRow">
@@ -75,13 +74,17 @@
       <span>Key saved. Restart so A.T.L.A.S. can read it.</span>
       <button id="keyRestart" class="pill">RESTART NOW</button>
     </div>
-    <a class="keyhint" href="https://aistudio.google.com/apikey" id="keyGetLink">Need a free key? →</a>
+    <span class="keyhint">Free keys: aistudio.google.com/apikey (Gemini) · console.groq.com (Groq)</span>
   </div>
 
   <footer class="inputbar">
     <span class="prompt">&#10095;</span>
     <input id="entry" type="text" autocomplete="off" spellcheck="false" autofocus
            placeholder="Type a command, or say “Atlas”…" aria-label="Command input">
+    <button class="icon-btn small" id="tabBtn" title="Readouts (Tab)" aria-label="Toggle readouts">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path
+        d="M3 5h18v2H3zm0 4h12v2H3zm0 4h18v2H3zm0 4h12v2H3z"/></svg>
+    </button>
   </footer>
 </main>
 
