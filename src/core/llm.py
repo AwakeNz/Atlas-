@@ -131,7 +131,9 @@ class OpenAICompatProvider(LLMProvider):
     def chat(self, messages, tools=None, stream_cb=None, small=False) -> ChatResult:
         model = self.small_model if small else self.model
         payload: dict = {"model": model, "messages": messages, "stream": True,
-                         "temperature": 0.4, "stream_options": {"include_usage": True}}
+                         "temperature": 0.4}
+        if self.name == "groq":
+            payload["stream_options"] = {"include_usage": True}
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
@@ -243,12 +245,10 @@ class ProviderChain(LLMProvider):
                         self._bus.notify(f"PROVIDER → {provider.name.upper()}")
                     log.info("switched to provider %s", provider.name)
                 return result
-            except QuotaError as e:
-                log.info("provider %s unavailable: %s", provider.name, e)
-                errors.append(str(e))
+            except (QuotaError, LLMError) as e:
+                log.info("provider %s failed/unavailable: %s", provider.name, e)
+                errors.append(f"{provider.name}: {e}")
                 continue
-            # LLMError (non-quota) propagates immediately — it won't fix itself
-            # by trying a different provider (usually a malformed request).
         raise LLMError("All providers exhausted: " + " | ".join(errors))
 
     def transcribe(self, wav_bytes: bytes) -> str:
